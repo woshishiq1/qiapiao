@@ -26,7 +26,7 @@ jobs:
       run: dotnet restore qiapiao.sln  # 替换为您的解决方案名称
 
     - name: Build
-      run: dotnet build YourSolution.sln --configuration Release  # 使用 Release 配置构建
+      run: dotnet build qiapiao.sln --configuration Release  # 使用 Release 配置构建
 
     - name: Publish
       run: dotnet publish qiapiao.csproj -c Release -o output  # 替换为您的项目名称
