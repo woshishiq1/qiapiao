@@ -1,4 +1,4 @@
-name: Build Solution
+name: Build .NET Project on Windows
 
 on:
   push:
@@ -7,40 +7,36 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
+  workflow_dispatch:     
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-latest  # 在 Windows 上运行
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v3  # 获取代码仓库
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+    - name: Set up Visual Studio
+      uses: microsoft/setup-msbuild@v1  # 配置 MSBuild 环境
+
+    - name: Install Visual Studio Build Tools
+      run: |
+        choco install visualstudio2019buildtools --params "--add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --quiet"
+        
+    - name: Restore NuGet packages
+      run: nuget restore qiapiao.sln  # 恢复依赖包，确保依赖已准备好
+
+    - name: Build solution
+      run: msbuild qiapiao.sln /p:Configuration=Release  # 使用 MSBuild 编译项目
+
+    - name: Publish DLL
+      run: |
+        mkdir output
+        copy "bin\Release\irml.dll" output/  # 将生成的 DLL 复制到 output 文件夹
+
+    - name: Upload DLL as artifact
+      uses: actions/upload-artifact@v3
       with:
-        dotnet-version: '7.0.x'  # 指定您的 .NET 版本
-
-    - name: Restore .NET dependencies
-      run: dotnet restore qiapiao.sln  # 替换为您的解决方案名称
-
-    - name: Build .NET
-      run: dotnet build qiapiao.sln --configuration Release  # 使用 Release 配置构建
-
-    - name: Publish .NET
-      run: dotnet publish qiapiao.csproj -c Release -o output  # 替换为您的项目名称
-    
-    - name: Setup C++ Build Tools
-      uses: actions/setup-tools@v1
-      with:
-        tools: 'cmake'  # 安装 CMake
-
-    - name: Configure C++ project
-      run: cmake -S . -B build -G "Visual Studio 16 2019"  # 替换为您的 C++ 项目的路径和生成器
-
-    - name: Build C++ project
-      run: cmake --build build --config Release  # 编译生成
-
-    - name: Run tests (if any)
-      run: ctest --test-dir build  # 如果有测试，运行测试
+        name: YourProject-DLL
+        path: output/irml.dll  # 上传生成的 DLL 文件
