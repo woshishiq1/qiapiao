@@ -1,4 +1,4 @@
-name: Build C++ DLL with Visual Studio
+name: Build C++ DLL with Visual Studio x64
 
 on:
   push:
