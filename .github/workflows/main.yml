@@ -1,0 +1,50 @@
+name: Build C++ DLL for x86 and x64
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest  # 使用最新的 Windows 环境
+
+    strategy:
+      matrix:
+        platform: [x86, x64]  # 定义 x86 和 x64 平台的矩阵
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3  # 获取代码
+
+    - name: Set up Visual Studio Build Tools
+      uses: microsoft/setup-msbuild@v1  # 设置 MSBuild 环境
+
+    - name: Install Visual Studio Build Tools
+      run: | 
+        choco install visualstudio2022buildtools --params "--add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --quiet"
+
+    - name: Restore NuGet packages
+      run: nuget restore qiapiao.sln  # 恢复 NuGet 包（如果有的话）
+
+    - name: Build solution for ${{ matrix.platform }} platform
+      run: |
+        msbuild qiapiao.sln /p:Configuration=Release /p:Platform=${{ matrix.platform }}  # 根据平台编译
+
+    - name: List generated files
+      run: |
+        Get-ChildItem -Path dll\Releasephysx27_${{ matrix.platform }} -Recurse -Name  # 列出编译生成的文件，检查 DLL 是否存在
+
+    - name: Publish DLL for ${{ matrix.platform }} platform
+      run: |
+        mkdir output-${{ matrix.platform }}
+        copy "dll\Releasephysx27_${{ matrix.platform }}\irml.dll" output-${{ matrix.platform }}/  # 复制对应平台的 DLL 文件
+
+    - name: Upload DLL as artifact for ${{ matrix.platform }} platform
+      uses: actions/upload-artifact@v3
+      with:
+        name: "YourProject-DLL-${{ matrix.platform }}"
+        path: output-${{ matrix.platform }}/irml.dll  # 上传生成的 DLL 文件
