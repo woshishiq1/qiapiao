@@ -20,9 +20,9 @@ jobs:
       uses: microsoft/setup-msbuild@v1  # 设置 MSBuild 环境
 
     - name: Install Visual Studio Build Tools
-      run: |
+      run: | 
         choco install visualstudio2022buildtools --params "--add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --quiet"
-        
+
     - name: Restore NuGet packages
       run: nuget restore qiapiao.sln  # 恢复 NuGet 包（如果有的话）
 
@@ -32,12 +32,12 @@ jobs:
 
     - name: List generated files
       run: |
-        Get-ChildItem -Path bin\Release -Recurse -Name  # 列出编译生成的文件，检查 DLL 是否存在
+        Get-ChildItem -Path dll\Releasephysx27_64 -Recurse -Name  # 列出编译生成的文件，检查 DLL 是否存在
 
     - name: Publish DLL
       run: |
         mkdir output
-        copy "bin\Release\x64\irml.dll" output/  # 根据实际路径复制 DLL 文件
+        copy "dll\Releasephysx27_64\irml.dll" output/  # 根据实际路径复制 DLL 文件
 
     - name: Upload DLL as artifact
       uses: actions/upload-artifact@v3
