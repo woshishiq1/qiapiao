@@ -30,7 +30,8 @@ jobs:
       run: msbuild qiapiao.sln /p:Configuration=Release /p:Platform=x64
 
     - name: List files in bin\Release
-      run: dir bin\Release /s /b  # 列出所有生成的文件，确保 DLL 存在
+      run: |
+        Get-ChildItem -Path bin\Release -Recurse -Name  # 列出所有生成的文件，确保 DLL 存在
 
     - name: Publish DLL
       run: |
