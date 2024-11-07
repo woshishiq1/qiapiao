@@ -1,0 +1,32 @@
+name: Build Solution
+
+on:
+  push:
+    branches:
+      - main  # 或其他您想要监控的分支
+  pull_request:
+    branches:
+      - main  # 为拉取请求设置构建
+  workflow_dispatch:    
+
+jobs:
+  build:
+    runs-on: windows-latest  # 使用 Windows Runner，因为 .NET Framework 通常在 Windows 上构建
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '7.0.x'  # 指定您的 .NET 版本
+
+    - name: Restore dependencies
+      run: dotnet restore qiapiao.sln  # 替换为您的解决方案名称
+
+    - name: Build
+      run: dotnet build YourSolution.sln --configuration Release  # 使用 Release 配置构建
+
+    - name: Publish
+      run: dotnet publish qiapiao.csproj -c Release -o output  # 替换为您的项目名称
