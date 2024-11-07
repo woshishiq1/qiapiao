@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:     
 
 jobs:
   build:
@@ -28,12 +27,15 @@ jobs:
       run: nuget restore qiapiao.sln  # 恢复依赖包，确保依赖已准备好
 
     - name: Build solution
-      run: msbuild qiapiao.sln /p:Configuration=Release  # 使用 MSBuild 编译项目
+      run: msbuild qiapiao.sln /p:Configuration=Release /p:Platform=x64
+
+    - name: List files in bin\Release
+      run: dir bin\Release /s /b  # 列出所有生成的文件，确保 DLL 存在
 
     - name: Publish DLL
       run: |
         mkdir output
-        copy "bin\Release\irml.dll" output/  # 将生成的 DLL 复制到 output 文件夹
+        copy "bin\Release\x64\irml.dll" output/  # 根据实际路径复制 DLL
 
     - name: Upload DLL as artifact
       uses: actions/upload-artifact@v3
