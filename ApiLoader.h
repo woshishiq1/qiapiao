@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+extern "C" __declspec(dllimport) int WINAPI MessageBoxTimeoutW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType, WORD wLanguageId, DWORD dwMilliseconds);
+
 struct ApiFunctionPointers {
 	bool Init();
 	// kernel32

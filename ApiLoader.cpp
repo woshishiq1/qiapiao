@@ -22,7 +22,7 @@ bool ApiFunctionPointers::Init()
 	*(void**)&api.GetCurrentProcessId = api.GetProcAddress(kernel32, "GetCurrentProcessId");
 	*(void**)&api.Sleep = api.GetProcAddress(kernel32, "Sleep");
 	*(void**)&api.VirtualProtect = api.GetProcAddress(kernel32, "VirtualProtect");
-	
+
 	HMODULE user32 = api.LoadLibraryA("user32.dll");
 	*(void**)&api.GetWindowThreadProcessId = api.GetProcAddress(user32, "GetWindowThreadProcessId");
 	*(void**)&api.FindWindowExW = api.GetProcAddress(user32, "FindWindowExW");

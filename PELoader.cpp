@@ -1,11 +1,12 @@
 ﻿#include "framework.h"
+#include <malloc.h>
 #include "PELoader.h"
 
 
 static void* LoadFileData(const wchar_t* path, size_t* size)
 {
 	// 打开文件
-	HANDLE hFile = api.CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN | FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
 		return NULL;
 	}
@@ -17,22 +18,22 @@ static void* LoadFileData(const wchar_t* path, size_t* size)
 	const DWORD chunkSize = 8 * 1024 * 1024; // 8MB
 	DWORD currentChunkSize;
 	// 获取文件大小
-	if (!api.GetFileSizeEx(hFile, &fileSize)) {
+	if (!GetFileSizeEx(hFile, &fileSize)) {
 		goto label;
 	}
 	remainingSize = (size_t)fileSize.QuadPart;
 	*size = remainingSize;
 	// 分配内存
-	data = api.malloc(remainingSize);
+	data = malloc(remainingSize);
 	if (!data) {
 		goto label;
 	}
 	// 分块读取文件，针对大于 4GB 的文件
 	ptr = (char*)data;
-	currentChunkSize = min(chunkSize, (DWORD)remainingSize);
 	while (remainingSize > 0) {
-		if (!api.ReadFile(hFile, ptr, currentChunkSize, &bytesRead, NULL)) {
-			api.free(data);
+		currentChunkSize = min(chunkSize, (DWORD)remainingSize);
+		if (!ReadFile(hFile, ptr, currentChunkSize, &bytesRead, NULL)) {
+			free(data);
 			data = NULL;
 			goto label;
 		}
@@ -41,7 +42,7 @@ static void* LoadFileData(const wchar_t* path, size_t* size)
 	}
 label:
 	// 关闭文件
-	api.CloseHandle(hFile);
+	CloseHandle(hFile);
 	return data;
 }
 
@@ -96,7 +97,7 @@ BOOL ProcessImportTable(char* pImageBuffer, const PIMAGE_NT_HEADERS pNtHeaders)
 		for (; ImportDescriptor->Characteristics; ImportDescriptor++)
 		{
 			char* name = pImageBuffer + ImportDescriptor->Name;
-			HMODULE hModule = api.LoadLibraryA(name);
+			HMODULE hModule = LoadLibraryA(name);
 			if (hModule == NULL)
 			{
 				return FALSE;
@@ -108,12 +109,12 @@ BOOL ProcessImportTable(char* pImageBuffer, const PIMAGE_NT_HEADERS pNtHeaders)
 				if (pThunkData->u1.Ordinal & IMAGE_ORDINAL_FLAG)
 				{
 					UINT_PTR ordinal = IMAGE_ORDINAL(pThunkData->u1.Ordinal);
-					address = api.GetProcAddress(hModule, (LPCSTR)ordinal);
+					address = GetProcAddress(hModule, (LPCSTR)ordinal);
 				}
 				else
 				{
 					IMAGE_IMPORT_BY_NAME* pName = (IMAGE_IMPORT_BY_NAME*)(pImageBuffer + pThunkData->u1.AddressOfData);
-					address = api.GetProcAddress(hModule, (LPCSTR)pName->Name);
+					address = GetProcAddress(hModule, (LPCSTR)pName->Name);
 				}
 
 				if (address == NULL)
@@ -140,7 +141,7 @@ PVOID LoadPEFileData(char* pFileData)
 #endif
 
 	DWORD imageSize = nt->OptionalHeader.SizeOfImage;
-	char* imageBuffer = (char*)api.VirtualAlloc(NULL, imageSize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	char* imageBuffer = (char*)VirtualAlloc(NULL, imageSize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	if (imageBuffer == NULL)
 	{
 		return NULL;
@@ -163,7 +164,7 @@ PVOID LoadPEFileData(char* pFileData)
 	//Import
 	if(!ProcessImportTable((char*)imageBuffer, nt))
 	{
-		api.VirtualFree(imageBuffer, 0, MEM_RELEASE);
+		VirtualFree(imageBuffer, 0, MEM_RELEASE);
 		return NULL;
 	}
 
@@ -183,19 +184,19 @@ BOOL InvokeDllMain(PVOID hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 
 VOID ZeroPEHeader(PVOID hModule)
 {
-	api.memset(hModule, 0, ((PIMAGE_DOS_HEADER)hModule)->e_lfanew + sizeof(IMAGE_NT_HEADERS));
+	memset(hModule, 0, ((PIMAGE_DOS_HEADER)hModule)->e_lfanew + sizeof(IMAGE_NT_HEADERS));
 }
 
 PVOID FindLoadedDll(const wchar_t* fileName)
 {
 	PVOID address = NULL;
 	MEMORY_BASIC_INFORMATION mbi;
-	while (api.VirtualQuery(address, &mbi, sizeof(mbi)) != 0)
+	while (VirtualQuery(address, &mbi, sizeof(mbi)) != 0)
 	{
 		address = mbi.BaseAddress;
 		if ((mbi.State & MEM_COMMIT) && (mbi.Protect == PAGE_EXECUTE_READWRITE))
 		{
-			if (api.memcmp((char*)address + 8, fileName, api.wcslen(fileName) * sizeof(wchar_t)) == 0)
+			if (memcmp((char*)address + 8, fileName, wcslen(fileName) * sizeof(wchar_t)) == 0)
 			{
 				return address;
 			}
@@ -207,7 +208,7 @@ PVOID FindLoadedDll(const wchar_t* fileName)
 
 VOID MarkDllAsLoaded(PVOID imageBase, const wchar_t* fileName)
 {
-	my_memcpy((char*)imageBase + 8, fileName, api.wcslen(fileName) * sizeof(wchar_t));
+	my_memcpy((char*)imageBase + 8, fileName, wcslen(fileName) * sizeof(wchar_t));
 }
 
 PVOID LoadDll(const wchar_t* fileName, DWORD reason)
@@ -221,8 +222,8 @@ PVOID LoadDll(const wchar_t* fileName, DWORD reason)
 	}
 	if ((fileData = LoadFileData(fileName, &fileSize)) && (imageBase = LoadPEFileData((char*)fileData)))
 	{
-		api.memset(fileData, 0, fileSize);
-		api.free(fileData);
+		memset(fileData, 0, fileSize);
+		free(fileData);
 		InvokeDllMain(imageBase, reason, (PVOID)fileName);
 		InvokeDllMain(imageBase, DLL_PROCESS_ATTACH, NULL);
 		ZeroPEHeader(imageBase);

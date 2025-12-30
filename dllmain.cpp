@@ -6,42 +6,42 @@
 #pragma comment(linker, "/MERGE:.data=.text")
 #pragma comment(linker, "/MERGE:.rdata=.text")
 
-#pragma comment(linker, "/ENTRY:EntryPoint")
+//#pragma comment(linker, "/ENTRY:DllMain")
 
 
 DWORD WINAPI InitPlugin(LPVOID lpThreadParameter);
 
 
 // DllMain
-BOOL APIENTRY EntryPoint(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
 	static BOOL IsManualMappingInjection = FALSE;
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
 	{
-		api.Init();
+		//api.Init();
 		wchar_t FilePath[MAX_PATH];
 		if (!IsManualMappingInjection)
 		{
-			if (api.GetModuleFileNameW(hModule, FilePath, MAX_PATH) != 0)
+			if (GetModuleFileNameW(hModule, FilePath, MAX_PATH) != 0)
 			{
 				LoadDll(FilePath, -1);
 				return FALSE;
 			}
 		}
 		wchar_t* FileName;
-		api.GetModuleFileNameW(nullptr, FilePath, MAX_PATH);
+		GetModuleFileNameW(nullptr, FilePath, MAX_PATH);
 		FileName = my_wcsrchr(FilePath, '\\');
 		if (FileName)
 		{
 			FileName++;
 			if (my_wcsnicmp(FileName, XorString(L"GameApp.exe"), 12) == 0)
 			{
-				HANDLE hThread = api.CreateThread(NULL, 0, InitPlugin, NULL, 0, NULL);
+				HANDLE hThread = CreateThread(NULL, 0, InitPlugin, NULL, 0, NULL);
 				if (hThread)
 				{
-					api.CloseHandle(hThread);
+					CloseHandle(hThread);
 				}
 				break;
 			}
