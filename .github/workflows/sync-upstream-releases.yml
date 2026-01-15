@@ -1,44 +1,65 @@
 name: Sync Upstream Releases
 
-# 可手动触发，也可定时触发
 on:
-  workflow_dispatch:
+  workflow_dispatch: # 可手动触发
   schedule:
-    - cron: "0 0 * * *" # 每天 UTC 0 点执行一次
+    - cron: "0 0 * * *" # 每天 UTC 0 点自动同步
 
 jobs:
-  sync_releases:
+  sync-releases:
     runs-on: ubuntu-latest
     steps:
-      # Checkout fork 仓库
-      - name: Checkout fork repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 拉取全部历史记录和 tags
+          fetch-depth: 0
 
-      # Fetch all upstream tags
-      - name: Fetch upstream repository
+      - name: Sync upstream releases
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const upstreamOwner = 'qiabug';
+            const upstreamRepo = 'qiapiao';
+            const forkOwner = context.repo.owner;
+            const forkRepo = context.repo.repo;
+
+            // 获取上游所有 releases
+            const releases = await github.rest.repos.listReleases({
+              owner: upstreamOwner,
+              repo: upstreamRepo,
+              per_page: 100
+            });
+
+            for (const release of releases.data) {
+              const tag = release.tag_name;
+
+              // 检查 fork 是否已有此 tag/release
+              try {
+                await github.rest.repos.getReleaseByTag({
+                  owner: forkOwner,
+                  repo: forkRepo,
+                  tag
+                });
+                console.log(`Release ${tag} already exists in fork`);
+              } catch (e) {
+                console.log(`Creating release ${tag} in fork`);
+
+                // 创建 release
+                await github.rest.repos.createRelease({
+                  owner: forkOwner,
+                  repo: forkRepo,
+                  tag_name: tag,
+                  name: release.name || tag,
+                  body: release.body || '',
+                  draft: false,
+                  prerelease: release.prerelease
+                });
+              }
+            }
+
+      - name: Sync tags
         run: |
           git remote add upstream https://github.com/qiabug/qiapiao.git
           git fetch upstream --tags
-
-      # Create missing tags in fork
-      - name: Sync tags to fork
-        run: |
-          for tag in $(git tag -l "upstream/*"); do
-            tag_name=${tag#upstream/}
-            if ! git rev-parse $tag_name >/dev/null 2>&1; then
-              git tag $tag_name $tag
-              git push origin $tag_name
-            fi
-          done
-
-      # Sync Releases
-      - name: Sync Releases
-        uses: repo-sync/github-sync@v2
-        with:
-          source_repo: qiabug/qiapiao
-          destination_repo: ${{ github.repository }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          sync_tags: true
-          sync_releases: true
+          git push origin --tags
