@@ -1,0 +1,44 @@
+name: Sync Upstream Releases
+
+# 可手动触发，也可定时触发
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # 每天 UTC 0 点执行一次
+
+jobs:
+  sync_releases:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout fork 仓库
+      - name: Checkout fork repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 拉取全部历史记录和 tags
+
+      # Fetch all upstream tags
+      - name: Fetch upstream repository
+        run: |
+          git remote add upstream https://github.com/qiabug/qiapiao.git
+          git fetch upstream --tags
+
+      # Create missing tags in fork
+      - name: Sync tags to fork
+        run: |
+          for tag in $(git tag -l "upstream/*"); do
+            tag_name=${tag#upstream/}
+            if ! git rev-parse $tag_name >/dev/null 2>&1; then
+              git tag $tag_name $tag
+              git push origin $tag_name
+            fi
+          done
+
+      # Sync Releases
+      - name: Sync Releases
+        uses: repo-sync/github-sync@v2
+        with:
+          source_repo: qiabug/qiapiao
+          destination_repo: ${{ github.repository }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          sync_tags: true
+          sync_releases: true
