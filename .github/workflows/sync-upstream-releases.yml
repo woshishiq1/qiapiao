@@ -30,12 +30,17 @@ jobs:
           git config --global user.email "1987669587@qq.com"
 
       # -------------------------------
-      # 同步上游代码（保留 commit 历史）
+      # 同步上游代码（保留 commit 历史 + tag 自动覆盖）
       # -------------------------------
-      - name: 同步上游代码（保留历史）
+      - name: 同步上游代码（保留历史 + tag 覆盖）
         run: |
           set -e
           git remote add upstream https://github.com/qiabug/qiapiao.git || true
+          
+          # 删除本地已有 tags，防止冲突
+          git tag -l | xargs -n 1 git tag -d || true
+          
+          # 拉取上游分支和 tags
           git fetch upstream --tags
           git fetch upstream main
 
@@ -56,7 +61,11 @@ jobs:
           git add -A
           git diff --cached --quiet || git commit -m "Sync upstream $(date +%F)"
 
+          # 强制推送 main 分支
           git push origin main --force
+
+          # 强制推送 tags
+          git push origin --tags --force
 
       # -------------------------------
       # 安装 gh CLI
